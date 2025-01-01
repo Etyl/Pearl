@@ -298,7 +298,7 @@ class DeepTDLearning(PolicyLearner):
             self.get_next_state_values(batch, batch_size)
             * self._discount_factor
             * (1 - terminated_batch.float())
-        ) + reward_batch  # (batch_size), r + gamma * V(s)
+        ) + reward_batch.view(-1)  # (batch_size), r + gamma * V(s)
 
         criterion = torch.nn.MSELoss()
         bellman_loss = criterion(state_action_values, expected_state_action_values)

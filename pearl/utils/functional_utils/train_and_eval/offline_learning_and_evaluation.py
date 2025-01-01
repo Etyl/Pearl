@@ -11,6 +11,7 @@ import io
 import math
 import os
 import time
+from tqdm import tqdm
 
 from typing import Optional
 
@@ -185,7 +186,7 @@ def offline_learning(
     data_buffer.device_for_batches = offline_agent.device
 
     # training loop
-    for i in range(number_of_batches):
+    for i in tqdm(range(number_of_batches)):
         batch = data_buffer.sample(offline_agent.policy_learner.batch_size)
         assert isinstance(batch, TransitionBatch)
         loss = offline_agent.learn_batch(batch=batch)
