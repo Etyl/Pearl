@@ -953,10 +953,12 @@ class MultiAgentQValueMultiHeadNetwork(QValueNetwork):
     def forward(self, x: Tensor) -> Tensor:
         output = torch.zeros((x.shape[0], self._output_dim), device=x.device, dtype=x.dtype)
         for i in range(self.action_dim):
-            intput = torch.concatenate(
-                (x[:,i*self._local_features:(i+1)*self._local_features],
-                 x[:,self.state_dim-self._global_features:self.state_dim]), dim=-1)
-            output[:,i] = self._model(intput)[:,0]
+            input = torch.zeros((x.shape[0],self._local_features+self._global_features),device=x.device, dtype=x.dtype)
+            for j in range(self.action_dim):
+                input[:,j] = x[:,j*self._local_features+i]
+            for j in range(self._global_features):
+                input[:,self._local_features+j] = x[:,self.action_dim*self._local_features+j]
+            output[:,i] = self._model(input)[:,0]
         return output
 
 
