@@ -25,7 +25,7 @@ def AW(trajs: List[Traj]) -> Dict[str, np.ndarray[float]]:
   weights = np.asarray(functools.reduce(lambda a, b: a + b,
               [[w] * l for w, l in zip((ep_rets - v), ep_lens)]))
   weights = (weights - weights.min()) / (weights.max() - weights.min())
-  dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0, dtype=np.float32) for k in trajs[0].keys()}
+  dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0) for k in trajs[0].keys()}
   dataset["weights"] = weights
   return dataset
 
