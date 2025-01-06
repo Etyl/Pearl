@@ -29,6 +29,16 @@ def AW(trajs: List[Traj]) -> Dict[str, np.ndarray[float]]:
   dataset["weights"] = weights
   return dataset
 
+def RR(trajs: List[Traj]) -> Dict[str, np.ndarray[float]]:
+    """
+    Based on return resampling
+    """
+    weights = np.asarray(list(map(lambda traj: traj["score"][0], trajs)))
+    weights = (weights - weights.min()) / (weights.max() - weights.min())
+    dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0) for k in trajs[0].keys()}
+    dataset["weights"] = [[w]*len(traj["observation"]) for w,traj in zip(weights,trajs)]
+    del dataset["score"]
+    return dataset
 
 
 class WeightedReplayBuffer(TensorBasedReplayBuffer):
@@ -141,7 +151,7 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
 
     def build_memory(self) -> None:
         for trajs in self._sample_dict.values():
-            dataset = AW(trajs)
+            dataset = RR(trajs)
 
             for i in range(len(dataset["observation"])):
                 super().push(
@@ -154,6 +164,7 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
                     curr_available_actions=dataset["curr_available_actions"][i],
                     next_available_actions=dataset["next_available_actions"][i],
                 )
-            self._weights += list(softmax(dataset["weights"] / self.temperature))
+            # self._weights += list(softmax(dataset["weights"] / self.temperature))
+            self._weights += list(dataset["weights"])
 
 
