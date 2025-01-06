@@ -25,7 +25,7 @@ def AW(trajs: List[Traj]) -> Dict[str, np.ndarray[float]]:
   weights = np.asarray(functools.reduce(lambda a, b: a + b,
               [[w] * l for w, l in zip((ep_rets - v), ep_lens)]))
   weights = (weights - weights.min()) / (weights.max() - weights.min())
-  dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0) for k in trajs[0].keys()}
+  dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0, dtype=np.float32) for k in trajs[0].keys()}
   dataset["weights"] = weights
   return dataset
 
@@ -43,6 +43,13 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
     @property
     def device_for_batches(self) -> torch.device:
         return self._device_for_batches
+    
+    @device_for_batches.setter
+    def device_for_batches(self, new_device_for_batches: torch.device) -> None:
+        self._device_for_batches = new_device_for_batches
+
+    def __len__(self):
+        return len(self._memory)
 
     def push(
         self,
@@ -136,7 +143,7 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
         for trajs in self._sample_dict.values():
             dataset = AW(trajs)
 
-            for i in range(len(dataset)):
+            for i in range(len(dataset["observation"])):
                 super().push(
                     state = dataset["observation"][i],
                     action = dataset["action"][i],
