@@ -36,7 +36,7 @@ def RR(trajs: List[Traj]) -> Dict[str, np.ndarray[float]]:
     weights = np.asarray(list(map(lambda traj: traj["score"][0], trajs)))
     weights = (weights - weights.min()) / (weights.max() - weights.min())
     dataset = {k: np.concatenate([traj[k] for traj in trajs], axis=0) for k in trajs[0].keys()}
-    dataset["weights"] = np.concatenate([[w]*len(traj["observation"]) for w,traj in zip(weights,trajs)])
+    dataset["weights"] = np.concatenate([[w]*len(traj["observation"]) for w,traj in zip(weights,trajs)]).flatten()
     del dataset["score"]
     return dataset
 
@@ -45,8 +45,8 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
     def __init__(self, temperature: float) -> None:
         super().__init__(0)
         self.temperature = temperature
-        self._memory: List[Transition] = []
-        self._weights: List[float] = []
+        self._memory: np.ndarray[Transition] = np.ndarray([])
+        self._weights: np.ndarray[float] = np.ndarray([])
         self._device_for_batches: torch.device = get_default_device()
         self._sample_dict: Dict[str, List[Traj]] = defaultdict(list)
 
@@ -130,7 +130,7 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
                 f"Can't get a batch of size {batch_size} from a replay buffer with "
                 f"only {len(self)} elements"
             )
-        samples = random.choices(self._memory, weights=self._weights, k=batch_size)
+        samples = np.random.default_rng().choice(self._memory, size=batch_size, replace=False, p=self._weights)
         return self._create_transition_batch(
             # pyre-fixme[6]: For 1st argument expected `List[Transition]` but got
             #  `List[Union[Transition, TransitionBatch]]`.
@@ -150,6 +150,8 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
         self._sample_dict[group_name].append(traj)
 
     def build_memory(self) -> None:
+        self._memory = []
+        self._weights = []
         for trajs in self._sample_dict.values():
             dataset = RR(trajs)
 
@@ -166,5 +168,8 @@ class WeightedReplayBuffer(TensorBasedReplayBuffer):
                 )
             self._weights += list(softmax(dataset["weights"] / self.temperature))
             # self._weights += list(dataset["weights"])
+        self._memory = np.array(self._memory)
+        self._weights = np.array(self._weights)
+        self._weights = self._weights / np.sum(self._weights)
 
 
